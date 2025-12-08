@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="blocks/myplugin/db" VERSION="20250101" COMMENT="XMLDB file for Moodle blocks/myplugin">
+<XMLDB PATH="payment/gateway/helloasso/db" VERSION="20250101" COMMENT="XMLDB file for Moodle paygw/helloasso">
   <TABLES>
     <TABLE NAME="payment_helloasso_logs" COMMENT="HelloAsso payment gateway logs">
       <FIELDS>
@@ -8,7 +8,7 @@
         <FIELD NAME="userid"        TYPE="int"      LENGTH="10"     NOTNULL="true" COMMENT="User ID"/>
         <FIELD NAME="action"        TYPE="char"     LENGTH="50"     NOTNULL="true" COMMENT="Action type (api_call, token_request, webhook, etc)"/>
         <FIELD NAME="status"        TYPE="char"     LENGTH="20"     NOTNULL="true" COMMENT="success, error, fraud_detected"/>
-        <FIELD NAME="amount"        TYPE="decimal"  LENGTH="10,2"   NOTNULL="true" COMMENT="Payment amount"/>
+        <FIELD NAME="amount"        TYPE="number"   LENGTH="10"     DECIMALS="2"   NOTNULL="true" COMMENT="Payment amount"/>
         <FIELD NAME="reference"     TYPE="char"     LENGTH="255"    NOTNULL="false" COMMENT="HelloAsso reference"/>
         <FIELD NAME="message"       TYPE="text"                     NOTNULL="false" COMMENT="Log message or error details"/>
         <FIELD NAME="response_code" TYPE="int"      LENGTH="3"      NOTNULL="false" COMMENT="HTTP response code"/>
@@ -17,7 +17,7 @@
       </FIELDS>
       <KEYS>
         <KEY NAME="primary"         TYPE="primary" FIELDS="id"/>
-        <KEY NAME="paymentid"       TYPE="foreign" FIELDS="paymentid" REFTABLE="payments" REFFIELDS="id"/>
+        <KEY NAME="paymentid"       TYPE="foreign" FIELDS="paymentid" REFTABLE="payment" REFFIELDS="id"/>
         <KEY NAME="userid"          TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
       </KEYS>
       <INDEXES>
