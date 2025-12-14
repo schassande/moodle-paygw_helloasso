@@ -13,3 +13,6 @@ $string['payment_success'] = 'Your payment was successfully processed via HelloA
 $string['payment_cancelled'] = 'Your payment was cancelled.';
 $string['paymentverificationfailed'] = 'Payment verification failed';
 $string['payment_error'] = 'An error occurred during payment processing';
+$string['missingconfig'] = 'Missing HelloAsso configuration';
+$string['invalidamount'] = 'Invalid payment amount';
+$string['paymentnotfound'] = 'Payment not found';

@@ -1,5 +1,5 @@
 <?php
-namespace payment_gateway_helloasso;
+namespace paygw_helloasso;
 
 use core_payment\gateway;
 use moodle_url;
@@ -13,17 +13,17 @@ class gateway extends \core_payment\gateway {
     }
 
     public function get_name(): string {
-        return get_string('pluginname', 'payment_gateway_helloasso');
+        return get_string('pluginname', 'paygw_helloasso');
     }
 
     public function initiate_payment(\core_payment\payment_transaction $payment, array $options = []): ?moodle_url {
         global $CFG, $USER;
 
         try {
-            $clientid = get_config('payment_gateway_helloasso', 'clientid');
-            $clientsecret = get_config('payment_gateway_helloasso', 'clientsecret');
-            $orgslug = get_config('payment_gateway_helloasso', 'org_slug');
-            $formid = get_config('payment_gateway_helloasso', 'formid');
+            $clientid = get_config('paygw_helloasso', 'clientid');
+            $clientsecret = get_config('paygw_helloasso', 'clientsecret');
+            $orgslug = get_config('paygw_helloasso', 'org_slug');
+            $formid = get_config('paygw_helloasso', 'formid');
 
             // Valider les configs
             if (empty($clientid) || empty($clientsecret) || empty($orgslug) || empty($formid)) {
@@ -35,7 +35,7 @@ class gateway extends \core_payment\gateway {
                     $payment->get_amount(),
                     'Missing configuration (clientid, clientsecret, orgslug or formid)'
                 );
-                throw new \moodle_exception('missingconfig', 'payment_gateway_helloasso');
+                throw new \moodle_exception('missingconfig', 'paygw_helloasso');
             }
 
             $amount = $payment->get_amount();
@@ -48,7 +48,7 @@ class gateway extends \core_payment\gateway {
                     $amount,
                     'Invalid amount: ' . $amount
                 );
-                throw new \moodle_exception('invalidamount', 'payment_gateway_helloasso');
+                throw new \moodle_exception('invalidamount', 'paygw_helloasso');
             }
 
             // Log de l'initiation du paiement
@@ -77,9 +77,16 @@ class gateway extends \core_payment\gateway {
             // Exemple de lien (remplacez par l'URL du formulaire HelloAsso réel) :
             $baseurl = "https://www.helloasso.com/associations/{$orgslug}/formulaires/{$formid}/paiement";
             
-            $returnurl = rawurlencode($successUrl);
-            $cancelurl = rawurlencode($cancelUrl);
+            // Générer les URLs de retour
+            $successUrl = new moodle_url('/payment/gateway/helloasso/return.php', [
+                'paymentid' => $payment->get_id(),
+                'sesskey' => sesskey()
+            ]);
+            $cancelUrl = new moodle_url('/payment/gateway/helloasso/cancel.php');
+            $reference = 'PAY-' . $payment->get_id();
             $amountcentimes = intval(round($amount * 100));
+            $returnurl = rawurlencode($successUrl->out(false));
+            $cancelurl = rawurlencode($cancelUrl->out(false));
 
             // Tu devras ajuster avec les paramètres attendus par HelloAsso (à voir selon la doc ou le widget utilisé).
             $payurl = new moodle_url($baseurl, [

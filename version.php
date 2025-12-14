@@ -5,5 +5,5 @@ defined('MOODLE_INTERNAL') || die();
 $plugin->component = 'paygw_helloasso';
 $plugin->version = 2024061000;
 $plugin->requires = 2023042400;
-$plugin->maturity = MATURITY_RC;
-$plugin->release = '0.1 (release candidate)';
+$plugin->maturity = MATURITY_STABLE;
+$plugin->release = '0.3 (stable)';

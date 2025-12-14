@@ -12,7 +12,3 @@ This plugin allows you to use HelloAsso as a payment gateway in Moodle.
 
 When users pay for an item (course or other), they will be redirected to HelloAsso.
 After payment, HelloAsso returns them to Moodle.
-
-## Note
-
-This is a minimal integration. For production, add payment confirmation handling (webhook) and error management.

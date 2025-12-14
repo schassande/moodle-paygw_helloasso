@@ -13,3 +13,6 @@ $string['payment_success'] = 'Votre paiement a été effectué avec succès via 
 $string['payment_cancelled'] = 'Votre paiement a été annulé.';
 $string['paymentverificationfailed'] = 'Échec de la vérification du paiement';
 $string['payment_error'] = 'Une erreur est survenue lors du traitement du paiement';
+$string['missingconfig'] = 'Configuration manquante HelloAsso';
+$string['invalidamount'] = 'Montant de paiement invalide';
+$string['paymentnotfound'] = 'Paiement non trouvé';

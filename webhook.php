@@ -5,7 +5,7 @@ $payload = file_get_contents('php://input');
 $signature = $_SERVER['HTTP_X_HELLOASSO_SIGNATURE'] ?? '';
 
 // Vérifier la signature
-$expected_signature = hash_hmac('sha256', $payload, get_config('payment_gateway_helloasso', 'clientsecret'));
+$expected_signature = hash_hmac('sha256', $payload, get_config('paygw_helloasso', 'clientsecret'));
 
 if (!hash_equals($expected_signature, $signature)) {
     http_response_code(403);
