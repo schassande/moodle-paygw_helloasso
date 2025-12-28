@@ -1,12 +1,12 @@
 <?php
 namespace paygw_helloasso;
 
-use core_payment\gateway;
+use core_payment\gateway as payment_gateway;
 use moodle_url;
 
 defined('MOODLE_INTERNAL') || die();
 
-class gateway extends \core_payment\gateway {
+class gateway extends payment_gateway {
 
     public static function get_supported_currencies(): array {
         return ['EUR'];
@@ -16,14 +16,56 @@ class gateway extends \core_payment\gateway {
         return get_string('pluginname', 'paygw_helloasso');
     }
 
+    /**
+     * Configuration form for the gateway in the payment account
+     */
+    public static function add_configuration_to_gateway_form(\core_payment\form\account_gateway $form): void {
+        $mform = $form->get_mform();
+
+        $mform->addElement('text', 'clientid', get_string('clientid', 'paygw_helloasso'));
+        $mform->setType('clientid', PARAM_TEXT);
+        $mform->addHelpButton('clientid', 'clientid', 'paygw_helloasso');
+
+        $mform->addElement('text', 'clientsecret', get_string('clientsecret', 'paygw_helloasso'));
+        $mform->setType('clientsecret', PARAM_TEXT);
+        $mform->addHelpButton('clientsecret', 'clientsecret', 'paygw_helloasso');
+
+        $mform->addElement('text', 'org_slug', get_string('org_slug', 'paygw_helloasso'));
+        $mform->setType('org_slug', PARAM_TEXT);
+        $mform->addHelpButton('org_slug', 'org_slug', 'paygw_helloasso');
+
+        $mform->addElement('text', 'formid', get_string('formid', 'paygw_helloasso'));
+        $mform->setType('formid', PARAM_TEXT);
+        $mform->addHelpButton('formid', 'formid', 'paygw_helloasso');
+    }
+
+    /**
+     * Validates the gateway configuration form
+     */
+    public static function validate_gateway_form(\core_payment\form\account_gateway $form, \stdClass $data, array $files, array &$errors): void {
+        if (empty($data->clientid)) {
+            $errors['clientid'] = get_string('required');
+        }
+        if (empty($data->clientsecret)) {
+            $errors['clientsecret'] = get_string('required');
+        }
+        if (empty($data->org_slug)) {
+            $errors['org_slug'] = get_string('required');
+        }
+        if (empty($data->formid)) {
+            $errors['formid'] = get_string('required');
+        }
+    }
+
     public function initiate_payment(\core_payment\payment_transaction $payment, array $options = []): ?moodle_url {
         global $CFG, $USER;
 
         try {
-            $clientid = get_config('paygw_helloasso', 'clientid');
-            $clientsecret = get_config('paygw_helloasso', 'clientsecret');
-            $orgslug = get_config('paygw_helloasso', 'org_slug');
-            $formid = get_config('paygw_helloasso', 'formid');
+            $config = (object) $this->get_configuration();
+            $clientid = $config->clientid ?? '';
+            $clientsecret = $config->clientsecret ?? '';
+            $orgslug = $config->org_slug ?? '';
+            $formid = $config->formid ?? '';
 
             // Valider les configs
             if (empty($clientid) || empty($clientsecret) || empty($orgslug) || empty($formid)) {
@@ -61,20 +103,9 @@ class gateway extends \core_payment\gateway {
                 'Payment initiated successfully'
             );
 
-            // Commerce: Créer une session paiement HelloAsso
-            // (documentation: https://api.helloasso.com/docs/)
-
             // 1. Obtenir un token OAuth2.0 pour HelloAsso
             $token = self::get_helloasso_token($clientid, $clientsecret);
 
-            // 2. Créer ou utiliser un formulaire HelloAsso avec l'API
-            // (Ici, on suppose que tu as un formulaire de type 'don' déjà créé).
-
-            // 3. Générer un lien de paiement avec les bons paramètres.
-            // Ici, par simplicité, on redirige vers le formulaire en transmettant le montant et la référence.
-            // Dans l'idéal, il faudrait utiliser un endpoint serveur pour créer la ressource HelloAsso et l'associer.
-
-            // Exemple de lien (remplacez par l'URL du formulaire HelloAsso réel) :
             $baseurl = "https://www.helloasso.com/associations/{$orgslug}/formulaires/{$formid}/paiement";
             
             // Générer les URLs de retour
@@ -88,7 +119,6 @@ class gateway extends \core_payment\gateway {
             $returnurl = rawurlencode($successUrl->out(false));
             $cancelurl = rawurlencode($cancelUrl->out(false));
 
-            // Tu devras ajuster avec les paramètres attendus par HelloAsso (à voir selon la doc ou le widget utilisé).
             $payurl = new moodle_url($baseurl, [
                 'amount' => $amountcentimes,
                 'reference' => $reference,
@@ -111,7 +141,6 @@ class gateway extends \core_payment\gateway {
         }
     }
 
-    // -- OBTENIR UN TOKEN OAUTH2 (exemple simplifié, utilise CURL ou Guzzle) --
     private static function get_helloasso_token($clientid, $clientsecret) {
         $url = 'https://api.helloasso.com/oauth2/token';
         $data = [
@@ -175,6 +204,6 @@ class gateway extends \core_payment\gateway {
     }
 
     public function can_refund(): bool {
-        return false; // A gérer si HelloAsso supporte les remboursements via API.
+        return false;
     }
 }
