@@ -14,14 +14,7 @@ $checkoutintentid = optional_param('checkoutIntentId', '', PARAM_INT);
 $code = optional_param('code', '', PARAM_ALPHA);
 $orderid = optional_param('orderId', '', PARAM_INT);
 
-error_log("DEBUG: return.php called with params :\n"
-    . "-paymentid={$paymentid}\n"
-    . "-sesskey={$sesskey}\n"
-    . "-checkoutIntentId={$checkoutintentid}\n"
-    . "-code={$code}\n"
-    . "-orderId={$orderid}\n"
-    , 3, __DIR__ . '/debug.log');
-
+debugging("HelloAsso: return.php called - paymentid={$paymentid}, checkoutIntentId={$checkoutintentid}, code={$code}, orderId={$orderid}", DEBUG_DEVELOPER);
 
 try {
     // Vérifier sesskey
@@ -34,10 +27,10 @@ try {
             0,
             'Invalid session key'
         );
-        error_log("DEBUG: Invalid sesskey for paymentid {$paymentid} and user {$USER->id}\n", 3, __DIR__ . '/debug.log');
+        debugging("HelloAsso: Invalid sesskey for paymentid {$paymentid} and user {$USER->id}", DEBUG_DEVELOPER);
         throw new \moodle_exception('invalidsesskey');
     }
-    error_log("DEBUG: Sesskey confirmed for paymentid {$paymentid} and user {$USER->id}\n", 3, __DIR__ . '/debug.log');
+    debugging("HelloAsso: Sesskey confirmed for paymentid {$paymentid} and user {$USER->id}", DEBUG_DEVELOPER);
 
     // Récupérer et valider le paiement
     $payment = $DB->get_record('payments', ['id' => $paymentid], '*', MUST_EXIST);
@@ -50,10 +43,10 @@ try {
             0,
             'Payment record not found'
         );
-        error_log("DEBUG: Payment record not found for paymentid {$paymentid}\n", 3, __DIR__ . '/debug.log');
+        debugging("HelloAsso: Payment record not found for paymentid {$paymentid}", DEBUG_DEVELOPER);
         throw new \moodle_exception('paymentnotfound', 'paygw_helloasso');
     }
-    error_log("DEBUG: Payment record found for paymentid {$paymentid}\n", 3, __DIR__ . '/debug.log');
+    debugging("HelloAsso: Payment record found for paymentid {$paymentid}", DEBUG_DEVELOPER);
 
     // Vérifier que le code retourné est "succeeded"
     if ($code !== 'succeeded') {
@@ -67,17 +60,17 @@ try {
             400,
             "CHECKOUT-{$checkoutintentid}"
         );
-        error_log("DEBUG: Payment not succeeded for paymentid {$paymentid} with code {$code}", 3, __DIR__ . '/debug.log');
+        debugging("HelloAsso: Payment not succeeded for paymentid {$paymentid} with code {$code}", DEBUG_DEVELOPER);
         throw new \moodle_exception('paymentnotcompleted', 'paygw_helloasso');
     }
-    error_log("DEBUG: Payment succeeded for paymentid {$paymentid}\n", 3, __DIR__ . '/debug.log');
+    debugging("HelloAsso: Payment succeeded for paymentid {$paymentid}", DEBUG_DEVELOPER);
 
     // IMPORTANT: Vérifier le paiement via l'API HelloAsso pour éviter la fraude
     // Ne JAMAIS faire confiance uniquement aux paramètres d'URL
     $verified = verify_helloasso_payment($checkoutintentid, $orderid, $payment);
 
     if ($verified) {
-        error_log("DEBUG: Payment verified successfully for paymentid {$paymentid}\n", 3, __DIR__ . '/debug.log');
+        debugging("HelloAsso: Payment verified successfully for paymentid {$paymentid}", DEBUG_DEVELOPER);
         \paygw_helloasso\logger::log_action(
             $paymentid,
             $USER->id,
@@ -110,7 +103,7 @@ try {
             400,
             "CHECKOUT-{$checkoutintentid}"
         );
-        error_log("DEBUG: Payment verification failed for paymentid {$paymentid}\n", 3, __DIR__ . '/debug.log');
+        debugging("HelloAsso: Payment verification failed for paymentid {$paymentid}", DEBUG_DEVELOPER);
         throw new \moodle_exception('paymentverificationfailed', 'paygw_helloasso');
     }
 
@@ -128,7 +121,7 @@ try {
         $payment->amount ?? 0,
         $e->getMessage()
     );
-    error_log("DEBUG: Exception caught in return.php for paymentid {$paymentid}: " . $e->getMessage() . "\n", 3, __DIR__ . '/debug.log');
+    debugging("HelloAsso: Exception in return.php for paymentid {$paymentid}: " . $e->getMessage(), DEBUG_DEVELOPER);
 }
 
 
@@ -149,54 +142,53 @@ function verify_helloasso_payment($checkoutintentid, $orderid, $payment) {
     
     $orgslug = get_config('paygw_helloasso', 'org_slug');
     if (empty($orgslug)) {
-        error_log("DEBUG: Organization slug is not configured\n", 3, __DIR__ . '/debug.log');
         debugging("HelloAsso ERROR: Organization slug is not configured", DEBUG_DEVELOPER);
         return false;
     }
-    error_log("DEBUG: Organization slug is {$orgslug}\n", 3, __DIR__ . '/debug.log');
+    debugging("HelloAsso: Organization slug is {$orgslug}", DEBUG_DEVELOPER);
 
     // Obtenir un token OAuth2 via la méthode mutualisée (construit automatiquement l'URL API)
     $token = \paygw_helloasso\gateway::get_helloasso_token();
-    error_log("DEBUG: Obtained token for verification: " . ($token ? 'YES' : 'NO')."\n", 3, __DIR__ . '/debug.log');
+    debugging("HelloAsso: Obtained token for verification: " . ($token ? 'YES' : 'NO'), DEBUG_DEVELOPER);
     if (!$token) {
         return false;
     }
-    error_log("DEBUG: Token obtained successfully\n", 3, __DIR__ . '/debug.log');
+    debugging("HelloAsso: Token obtained successfully", DEBUG_DEVELOPER);
 
     // Récupérer le checkout intent depuis l'API
     $apiurl = \paygw_helloasso\gateway::get_API_url();
     $checkouturl = "{$apiurl}/v5/organizations/{$orgslug}/checkout-intents/{$checkoutintentid}";
-    error_log("DEBUG: Checkout URL is {$checkouturl}\n", 3, __DIR__ . '/debug.log');
+    debugging("HelloAsso: Checkout URL is {$checkouturl}", DEBUG_DEVELOPER);
 
     $curl = new \curl();
     $curl->setHeader([ 'Authorization: Bearer ' . $token ]);
     $result = $curl->get($checkouturl);
-    error_log("DEBUG: Checkout data retrieved: \n" . $result . "\n", 3, __DIR__ . '/debug.log');
+    debugging("HelloAsso: Checkout data retrieved: " . $result, DEBUG_DEVELOPER);
 
     if (!$result) {
         return false;
     }
-    error_log("DEBUG: Checkout data retrieved successfully\n", 3, __DIR__ . '/debug.log');
+    debugging("HelloAsso: Checkout data retrieved successfully", DEBUG_DEVELOPER);
 
     $checkoutdata = json_decode($result, true);
-    // log du resultat JSON complet pour debug avec indentation
-    error_log("DEBUG: " . print_r($checkoutdata, true) . "\n", 3, __DIR__ . '/debug.log');
+    // log du resultat JSON complet pour debug
+    debugging("HelloAsso: Checkout data structure: " . json_encode($checkoutdata), DEBUG_DEVELOPER);
     // Vérifier que le paiement correspond
     if (!isset($checkoutdata['order']) || !isset($checkoutdata['order']['id'])) {
-        error_log("DEBUG: Invalid checkout data structure\n", 3, __DIR__ . '/debug.log');
+        debugging("HelloAsso: Invalid checkout data structure", DEBUG_DEVELOPER);
         return false;
     }
 
     // Vérifier que l'orderId correspond
     if ($orderid && $checkoutdata['order']['id'] != $orderid) {
-        error_log("DEBUG: Order ID mismatch: expected {$orderid}, got {$checkoutdata['order']['id']}\n", 3, __DIR__ . '/debug.log');
+        debugging("HelloAsso: Order ID mismatch - expected {$orderid}, got {$checkoutdata['order']['id']}", DEBUG_DEVELOPER);
         return false;
     }
     // Vérifier le montant (en centimes)
     $expectedamount = intval(round($payment->amount * 100));
     $actualamount = $checkoutdata['order']['amount']['total'] ?? 0;
     if ($expectedamount != $actualamount) {
-        error_log("DEBUG: Amount mismatch: expected {$expectedamount}, got {$actualamount}\n", 3, __DIR__ . '/debug.log');
+        debugging("HelloAsso: Amount mismatch - expected {$expectedamount}, got {$actualamount}", DEBUG_DEVELOPER);
         return false;
     }
     // Vérifier le statut du paiement
@@ -208,7 +200,7 @@ function verify_helloasso_payment($checkoutintentid, $orderid, $payment) {
                 // verification que le montant du paiement correspond aussi
                 $paymentamount = $p['amount'] ?? 0;
                 if ($paymentamount != $expectedamount) {
-                    error_log("DEBUG: Payment amount mismatch in payments: expected {$expectedamount}, got {$paymentamount}\n", 3, __DIR__ . '/debug.log');
+                    debugging("HelloAsso: Payment amount mismatch in payments - expected {$expectedamount}, got {$paymentamount}", DEBUG_DEVELOPER);
                     return false;
                 }
                 $paymentstatus = true;
@@ -217,7 +209,7 @@ function verify_helloasso_payment($checkoutintentid, $orderid, $payment) {
         }
     }
     if (!$paymentstatus) {
-        error_log("DEBUG: No payment with authorized or processed status found\n", 3, __DIR__ . '/debug.log');
+        debugging("HelloAsso: No payment with authorized or processed status found", DEBUG_DEVELOPER);
         return false;
     }
 
@@ -225,11 +217,11 @@ function verify_helloasso_payment($checkoutintentid, $orderid, $payment) {
     // Vérifier les métadonnées pour s'assurer que c'est bien notre paiement
     $metadata = $checkoutdata['metadata'] ?? [];
     if (isset($metadata['moodle_payment_id']) && $metadata['moodle_payment_id'] != $payment->id) {
-        error_log("DEBUG: Metadata payment ID mismatch: expected {$payment->id}, got {$metadata['moodle_payment_id']}\n", 3, __DIR__ . '/debug.log');
+        debugging("HelloAsso: Metadata payment ID mismatch - expected {$payment->id}, got {$metadata['moodle_payment_id']}", DEBUG_DEVELOPER);
         return false;
     }
     
-    error_log("DEBUG: Payment verification passed for paymentid {$payment->id}\n", 3, __DIR__ . '/debug.log');
+    debugging("HelloAsso: Payment verification passed for paymentid {$payment->id}", DEBUG_DEVELOPER);
     return true;
 }
 

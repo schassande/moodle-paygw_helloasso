@@ -18,7 +18,7 @@ if ($paymentid > 0) {
         $payment ? $payment->amount : 0,
         'User cancelled payment on HelloAsso page'
     );
-    error_log("DEBUG: Payment cancelled by user - paymentid={$paymentid}, userid={$USER->id}\n", 3, __DIR__ . '/debug.log');
+    debugging("HelloAsso: Payment cancelled by user - paymentid={$paymentid}, userid={$USER->id}", DEBUG_DEVELOPER);
 }
 
 echo $OUTPUT->header();

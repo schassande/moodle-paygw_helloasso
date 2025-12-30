@@ -56,7 +56,7 @@ class gateway extends payment_gateway {
         $apiurl = 'https://api.' . $baseurl;
 
         if ($debug) {
-            debugging("HelloAsso: Config check - org_slug={$orgslug}, clientid=" . substr($clientid, 0, 10) . "..., base_url={$baseurl}, api_url={$apiurl}", DEBUG_DEVELOPER);
+            debugging("HelloAsso: Config check - org_slug={$orgslug}, clientid=" . $clientid . "..., base_url={$baseurl}, api_url={$apiurl}", DEBUG_DEVELOPER);
         }
 
         if (empty($orgslug) || empty($clientid) || empty($clientsecret)) {
@@ -107,13 +107,13 @@ class gateway extends payment_gateway {
         $backurl = new moodle_url('/payment/gateway/helloasso/cancel.php', [
             'paymentid' => $paymentid
         ]);
-        error_log("DEBUG: backurl={$backurl->out(false)}\n", 3, __DIR__ . '/debug.log');
+        debugging("HelloAsso: backurl={$backurl->out(false)}", DEBUG_DEVELOPER);
         
         $errorurl = new moodle_url('/payment/gateway/helloasso/error.php', [
             'paymentid' => $paymentid,
             'sesskey' => sesskey()
         ]);
-        error_log("DEBUG: errorurl={$errorurl->out(false)}\n", 3, __DIR__ . '/debug.log');
+        debugging("HelloAsso: errorurl={$errorurl->out(false)}", DEBUG_DEVELOPER);
 
         // Préparer les données du checkout intent
         $amountcentimes = intval(round($amount * 100));
@@ -153,22 +153,19 @@ class gateway extends payment_gateway {
             'Content-Type: application/json'
         ]);
         $checkouturl = "{$apiurl}/v5/organizations/{$orgslug}/checkout-intents";
-        error_log("DEBUG: Checkout intents HTTP GET call :\n-url={$checkouturl}\n" 
-            . "-token:" . $token . "\n"
-            . "-body:" . $body . "\n"
-            , 3, __DIR__ . '/debug.log');
+        debugging("HelloAsso: Checkout intents HTTP call - url={$checkouturl}, token=" . $token . ", body=" . $body, DEBUG_DEVELOPER);
         $result = $curl->post($checkouturl, $body);
 
         $httpcode = $curl->get_info()['http_code'] ?? 0;
 
         if (!$result) {
-            error_log("Checkout intents, no HTTP result, httpcode={$httpcode}\n", 3, __DIR__ . '/debug.log');
+            debugging("HelloAsso: Checkout intents - no HTTP result, httpcode={$httpcode}", DEBUG_DEVELOPER);
             logger::log_action($paymentid, $USER->id, 'checkout_intent_creation', 'error', $amount, 'No response from API', $httpcode);
             throw new \moodle_exception('checkoutfailed', 'paygw_helloasso');
         }
 
         $response = json_decode($result, true);
-        error_log("Checkout intents, HTTP result:\n-httpcode={$httpcode}\n-response=" . print_r($response, true) . "\n", 3, __DIR__ . '/debug.log');
+        debugging("HelloAsso: Checkout intents result - httpcode={$httpcode}, response=" . json_encode($response), DEBUG_DEVELOPER);
 
         if ($httpcode != 200 || !isset($response['redirectUrl'])) {
             $errormsg = $response['message'] ?? 'Unknown error';
@@ -251,10 +248,10 @@ class gateway extends payment_gateway {
         $curl = new \curl();
         $result = $curl->post($url, $data, [ 'CURLOPT_HTTPHEADER' => [ 'Content-Type: application/x-www-form-urlencoded'] ]);
         $httpcode = $curl->get_info()['http_code'] ?? 0;
-        debugging("HelloAsso: Token response HTTP {$httpcode}. Response body: " . substr($result, 0, 200), DEBUG_DEVELOPER);
+        debugging("HelloAsso: Token response HTTP {$httpcode}. Response body: " . $result, DEBUG_DEVELOPER);
 
         if (!$result) {
-            error_log("Token request failed - no response" . $httpcode . "\n", 3, __DIR__ . '/debug.log');
+            debugging("HelloAsso: Token request failed - no response, httpcode={$httpcode}", DEBUG_DEVELOPER);
             logger::log_action(0, 0, 'token_request', 'error', 0, 'Token request failed - no response', $httpcode);
             return null;
         }
@@ -263,13 +260,12 @@ class gateway extends payment_gateway {
         if (isset($json['access_token'])) {
             $token = $json['access_token'];
             debugging("HelloAsso: Token obtained: {$token}", DEBUG_DEVELOPER);
-            error_log("HelloAsso: Token obtained: {$token}\n", 3, __DIR__ . '/debug.log');
             logger::log_action(0, 0, 'token_request', 'success', 0, 'Token obtained successfully', $httpcode);
             return $token;
         } else {
             $errormsg = isset($json['error']) ? $json['error'] : 'Unknown error';
             $errordesc = isset($json['error_description']) ? $json['error_description'] : '';
-            error_log("HelloAsso: Token error - {$errormsg}: {$errordesc}\n", 3, __DIR__ . '/debug.log');
+            debugging("HelloAsso: Token error - {$errormsg}: {$errordesc}", DEBUG_DEVELOPER);
             logger::log_action(0, 0, 'token_request', 'error', 0, "Token error: {$errormsg} - {$errordesc}", $httpcode);
             return null;
         }
