@@ -25,10 +25,18 @@ if ($ADMIN->fulltree) {
     ));
 
     $settings->add(new admin_setting_configtext(
-        'paygw_helloasso/formid',
-        get_string('formid', 'paygw_helloasso'),
-        get_string('formid_desc', 'paygw_helloasso'),
-        ''
+        'paygw_helloasso/base_url',
+        get_string('base_url', 'paygw_helloasso'),
+        get_string('base_url_desc', 'paygw_helloasso'),
+        'helloasso.com',
+        PARAM_TEXT
+    ));
+
+    $settings->add(new admin_setting_configcheckbox(
+        'paygw_helloasso/debugmode',
+        get_string('debugmode', 'paygw_helloasso'),
+        get_string('debugmode_desc', 'paygw_helloasso'),
+        0
     ));
 
     \core_payment\helper::add_common_gateway_settings($settings, 'paygw_helloasso');

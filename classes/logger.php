@@ -29,24 +29,10 @@ class logger {
         $log->reference = $reference;
         $log->message = $message;
         $log->response_code = $response_code;
-        $log->ip_address = \core\ip_utils::get_ip();
+        $log->ip_address = getremoteaddr();
         $log->timecreated = time();
 
         $DB->insert_record('payment_helloasso_logs', $log);
-
-        // Aussi enregistrer dans les logs Moodle standard
-        $logcontext = \context_system::instance();
-        \core\event\payment_log_event::create([
-            'context' => $logcontext,
-            'objectid' => $paymentid,
-            'userid' => $userid,
-            'other' => [
-                'action' => $action,
-                'status' => $status,
-                'amount' => $amount,
-                'message' => $message
-            ]
-        ])->trigger();
     }
 
     /**

@@ -1,5 +1,5 @@
 <?php
-namespace paygw_helloasso;
+
 defined('MOODLE_INTERNAL') || die();
 
 /**
