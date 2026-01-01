@@ -1,8 +1,8 @@
 {
   "name": "moodle-paygw-helloasso",
   "description": "HelloAsso payment gateway plugin for Moodle",
-  "version": "0.6.0",
-  "build": "2026010100",
+  "version": "0.6.2",
+  "build": "2026010102",
   "zip_folder_name": "helloasso",
   "scripts": {
     "build": "grunt amd",

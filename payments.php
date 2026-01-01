@@ -26,7 +26,8 @@ require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->libdir . '/tablelib.php');
 
-admin_externalpage_setup('paygw_helloasso_payments');
+require_login();
+require_capability('paygw/helloasso:manage', context_system::instance());
 
 $page = optional_param('page', 0, PARAM_INT);
 $perpage = optional_param('perpage', 50, PARAM_INT);

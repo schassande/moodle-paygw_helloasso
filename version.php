@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'paygw_helloasso';
-$plugin->version = 2026010100;
+$plugin->version = 2026010102;
 $plugin->requires = 2023042400;
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '0.6.0 (stable)';
+$plugin->release = '0.6.2 (stable)';
