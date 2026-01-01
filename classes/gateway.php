@@ -1,20 +1,26 @@
 <?php
-
 // This file is part of Moodle - http://moodle.org/
+//
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
-// 
-// @copyright 2025 Sebastien Chassande-Barrioz <chassande@gmail.com>
+
+/**
+ * HelloAsso payment gateway class.
+ *
+ * @package    paygw_helloasso
+ * @copyright  2025 Sebastien Chassande-Barrioz <chassande@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 
 namespace paygw_helloasso;
 
@@ -27,21 +33,55 @@ defined('MOODLE_INTERNAL') || die();
 global $CFG;
 require_once($CFG->libdir . '/filelib.php');
 
+/**
+ * Gateway class for HelloAsso payment gateway.
+ *
+ * @package    paygw_helloasso
+ * @copyright  2025 Sebastien Chassande-Barrioz <chassande@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class gateway extends payment_gateway {
 
+    /**
+     * Returns the list of currencies supported by HelloAsso.
+     *
+     * @return array List of supported currency codes
+     */
     public static function get_supported_currencies(): array {
         return ['EUR'];
     }
 
+    /**
+     * Returns the name of the gateway.
+     *
+     * @return string Gateway name
+     */
     public function get_name(): string {
         return get_string('pluginname', 'paygw_helloasso');
     }
 
+    /**
+     * Add configuration fields to the gateway form.
+     * No account-specific configuration needed - uses global plugin settings.
+     *
+     * @param \core_payment\form\account_gateway $form The form to add fields to
+     * @return void
+     */
     public static function add_configuration_to_gateway_form(\core_payment\form\account_gateway $form): void {
         // Aucune configuration spécifique au compte n'est nécessaire
         // L'API Checkout utilise uniquement la configuration globale du plugin
     }
 
+    /**
+     * Validate the gateway form data.
+     * No validation needed as there is no account-specific configuration.
+     *
+     * @param \core_payment\form\account_gateway $form The form to validate
+     * @param \stdClass $data Form data
+     * @param array $files Uploaded files
+     * @param array $errors Array to add errors to
+     * @return void
+     */
     public static function validate_gateway_form(\core_payment\form\account_gateway $form, \stdClass $data, array $files, array &$errors): void {
         // Aucune validation nécessaire
     }
@@ -203,6 +243,10 @@ class gateway extends payment_gateway {
      * Initie un paiement (méthode obligatoire de la classe parente)
      * Cette méthode est appelée par Moodle dans certains contextes
      * Elle délègue à generate_payment_url() pour éviter la duplication
+     *
+     * @param \core_payment\payment_transaction $payment Payment transaction object
+     * @param array $options Additional options
+     * @return moodle_url|null Redirect URL or null on failure
      */
     public function initiate_payment(\core_payment\payment_transaction $payment, array $options = []): ?moodle_url {
         global $USER;
@@ -239,6 +283,11 @@ class gateway extends payment_gateway {
         }
     }
 
+    /**
+     * Get the HelloAsso API base URL.
+     *
+     * @return string API base URL (production or sandbox)
+     */
     public static function get_API_url(): string {
         $baseurl = get_config('paygw_helloasso', 'base_url') ?? 'helloasso.com';
         return 'https://api.' . $baseurl;
@@ -247,7 +296,6 @@ class gateway extends payment_gateway {
     /**
      * Obtient un token OAuth2 HelloAsso
      *
-     * @param string $apiurl URL de l'API (production ou sandbox)
      * @return string|null Token d'accès ou null en cas d'erreur
      */
     public static function get_helloasso_token() {
@@ -288,6 +336,11 @@ class gateway extends payment_gateway {
         }
     }
 
+    /**
+     * Check if refunds are supported.
+     *
+     * @return bool False - refunds not yet implemented
+     */
     public function can_refund(): bool {
         return false;
     }
@@ -296,7 +349,9 @@ class gateway extends payment_gateway {
      * Configuration for the payment modal
      * This method tells Moodle which JavaScript module to load
      *
-     * @param \stdClass $config Gateway configuration
+     * @param string $component Component name
+     * @param string $paymentarea Payment area
+     * @param int $itemid Item ID
      * @return array Configuration array for JS
      */
     public function get_payable(string $component, string $paymentarea, int $itemid): array {

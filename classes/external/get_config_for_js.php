@@ -1,20 +1,26 @@
 <?php
 // This file is part of Moodle - http://moodle.org/
+//
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
-// 
-// @copyright 2025 Sebastien Chassande-Barrioz <chassande@gmail.com>
 
+/**
+ * HelloAsso payment gateway external function for getting configuration.
+ *
+ * @package    paygw_helloasso
+ * @copyright  2025 Sebastien Chassande-Barrioz <chassande@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 
 namespace paygw_helloasso\external;
 
@@ -27,8 +33,20 @@ use paygw_helloasso\logger;
 
 defined('MOODLE_INTERNAL') || die();
 
+/**
+ * External function to get HelloAsso configuration for JavaScript.
+ *
+ * @package    paygw_helloasso
+ * @copyright  2025 Sebastien Chassande-Barrioz <chassande@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class get_config_for_js extends external_api {
 
+    /**
+     * Returns description of method parameters.
+     *
+     * @return external_function_parameters
+     */
     public static function execute_parameters() {
         return new external_function_parameters([
             'component' => new external_value(PARAM_COMPONENT, 'Component'),
@@ -37,6 +55,14 @@ class get_config_for_js extends external_api {
         ]);
     }
 
+    /**
+     * Get HelloAsso payment configuration and create checkout intent.
+     *
+     * @param string $component Component name
+     * @param string $paymentarea Payment area
+     * @param int $itemid Item ID
+     * @return array Array with redirecturl
+     */
     public static function execute(string $component, string $paymentarea, int $itemid) {
         global $USER, $DB, $CFG;
 
@@ -250,6 +276,11 @@ class get_config_for_js extends external_api {
         }
     }
 
+    /**
+     * Returns description of method return value.
+     *
+     * @return external_single_structure
+     */
     public static function execute_returns() {
         return new external_single_structure([
             'redirecturl' => new external_value(PARAM_URL, 'Redirect URL'),

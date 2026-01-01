@@ -1,24 +1,38 @@
 <?php
 // This file is part of Moodle - http://moodle.org/
+//
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
-// 
-// @copyright 2025 Sebastien Chassande-Barrioz <chassande@gmail.com>
+
+/**
+ * HelloAsso payment gateway logger class.
+ *
+ * @package    paygw_helloasso
+ * @copyright  2025 Sebastien Chassande-Barrioz <chassande@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 
 namespace paygw_helloasso;
 
 defined('MOODLE_INTERNAL') || die();
 
+/**
+ * Logger class for HelloAsso payment gateway.
+ *
+ * @package    paygw_helloasso
+ * @copyright  2025 Sebastien Chassande-Barrioz <chassande@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class logger {
 
     /**
@@ -53,6 +67,9 @@ class logger {
 
     /**
      * Récupère les logs d'un paiement
+     *
+     * @param int $paymentid ID du paiement
+     * @return array Array of log records
      */
     public static function get_payment_logs($paymentid) {
         global $DB;
@@ -61,6 +78,9 @@ class logger {
 
     /**
      * Récupère les logs avec erreurs
+     *
+     * @param int $limit Nombre maximum de logs à retourner
+     * @return array Array of error log records
      */
     public static function get_error_logs($limit = 100) {
         global $DB;
@@ -75,6 +95,9 @@ class logger {
 
     /**
      * Récupère les paiements suspects (fraude)
+     *
+     * @param int $limit Nombre maximum d'alertes à retourner
+     * @return array Array of fraud alert log records
      */
     public static function get_fraud_alerts($limit = 50) {
         global $DB;
