@@ -24,6 +24,16 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+// Add link to payments list page.
+if ($hassiteconfig) {
+    $ADMIN->add('payment_gateways', new admin_externalpage(
+        'paygw_helloasso_payments',
+        get_string('payments_title', 'paygw_helloasso'),
+        new moodle_url('/payment/gateway/helloasso/payments.php'),
+        'paygw/helloasso:manage'
+    ));
+}
+
 if ($ADMIN->fulltree) {
     $settings->add(new admin_setting_configtext(
         'paygw_helloasso/clientid',
