@@ -63,5 +63,6 @@ module.exports = function(grunt) {
 
     // Register tasks
     grunt.registerTask('amd', ['uglify:amd']);
+    grunt.registerTask('stylelint', []); // Empty task - no CSS files in this plugin
     grunt.registerTask('default', ['amd']);
 };
