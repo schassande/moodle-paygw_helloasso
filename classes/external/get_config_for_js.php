@@ -31,8 +31,6 @@ use core_external\external_single_structure;
 use paygw_helloasso\gateway;
 use paygw_helloasso\logger;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * External function to get HelloAsso configuration for JavaScript.
  *
@@ -72,30 +70,31 @@ class get_config_for_js extends external_api {
             'itemid' => $itemid,
         ]);
 
-        // Context validation - require user to be logged in
+        // Context validation - require user to be logged in.
         $context = \context_system::instance();
         self::validate_context($context);
         require_login();
 
         $debug = get_config('paygw_helloasso', 'debugmode');
-        
+
         if ($debug) {
             debugging('HelloAsso: Starting payment initialization', DEBUG_DEVELOPER);
-            debugging("HelloAsso: Component=$component, PaymentArea=$paymentarea, ItemID=$itemid", DEBUG_DEVELOPER);
+            debugging("HelloAsso: Component=$component, PaymentArea=$paymentarea, ItemID=$itemid",
+                DEBUG_DEVELOPER);
         }
 
         try {
-            // Récupérer le compte de paiement associé et actif avec HelloAsso
-            $sql = "SELECT pa.* 
+            // Récupérer le compte de paiement associé et actif avec HelloAsso.
+            $sql = "SELECT pa.*
                     FROM {payment_accounts} pa
                     JOIN {payment_gateways} pg ON pg.accountid = pa.id
-                    WHERE pa.enabled = 1 
+                    WHERE pa.enabled = 1
                     AND pg.gateway = 'helloasso'
                     AND pg.enabled = 1
                     LIMIT 1";
-            
+
             $accountrecord = $DB->get_record_sql($sql);
-            
+
             if (!$accountrecord) {
                 if ($debug) {
                     debugging('HelloAsso: No active payment account found with HelloAsso gateway', DEBUG_DEVELOPER);
@@ -107,18 +106,18 @@ class get_config_for_js extends external_api {
                 debugging("HelloAsso: Found payment account ID={$accountrecord->id}", DEBUG_DEVELOPER);
             }
 
-            // Créer l'objet account
+            // Créer l'objet account.
             $account = new \core_payment\account($accountrecord->id);
 
-            // Récupérer la configuration du compte (contient uniquement formid)
+            // Récupérer la configuration du compte (contient uniquement formid).
             $gateway = $DB->get_record('payment_gateways', [
                 'accountid' => $account->get('id'),
                 'gateway' => 'helloasso'
             ], '*', MUST_EXIST);
-            
+
             $accountconfig = json_decode($gateway->config, true);
-            
-            // Récupérer les paramètres globaux du plugin
+
+            // Récupérer les paramètres globaux du plugin.
             $config = [
                 'clientid' => get_config('paygw_helloasso', 'clientid'),
                 'clientsecret' => get_config('paygw_helloasso', 'clientsecret'),
@@ -127,48 +126,51 @@ class get_config_for_js extends external_api {
             ];
 
             if ($debug) {
-                debugging("HelloAsso: Config - org_slug={$config['org_slug']}, base_url={$config['base_url']}", DEBUG_DEVELOPER);
+                debugging("HelloAsso: Config - org_slug={$config['org_slug']}, base_url={$config['base_url']}",
+                    DEBUG_DEVELOPER);
             }
 
-            // Récupérer le coût depuis la méthode d'inscription
+            // Récupérer le coût depuis la méthode d'inscription.
             $amount = null;
             $currency = 'EUR';
-            
-            // Pour enrol_fee (inscription payante)
+
+            // Pour enrol_fee (inscription payante).
             if ($component === 'enrol_fee' && $paymentarea === 'fee') {
                 $instance = $DB->get_record('enrol', ['id' => $itemid, 'enrol' => 'fee'], '*', MUST_EXIST);
                 $amount = (float) $instance->cost;
                 $currency = $instance->currency;
-                
+
                 if ($debug) {
-                    debugging("HelloAsso: Found enrol_fee instance - cost={$instance->cost}, currency={$instance->currency}", DEBUG_DEVELOPER);
+                    debugging("HelloAsso: Found enrol_fee instance - cost={$instance->cost}, " .
+                        "currency={$instance->currency}", DEBUG_DEVELOPER);
                 }
             } else {
-                // Essayer le callback générique
+                // Essayer le callback générique.
                 $payable = component_callback(
                     $component,
                     'get_payable',
                     [$paymentarea, $itemid],
                     null
                 );
-                
+
                 if (!empty($payable)) {
                     $amount = $payable['amount'];
                     $currency = $payable['currency'];
-                    
+
                     if ($debug) {
-                        debugging("HelloAsso: Got payable from callback - amount={$amount}, currency={$currency}", DEBUG_DEVELOPER);
+                        debugging("HelloAsso: Got payable from callback - amount={$amount}, " .
+                            "currency={$currency}", DEBUG_DEVELOPER);
                     }
                 }
             }
-            
+
             if ($amount === null || $amount <= 0) {
                 if ($debug) {
                     debugging("HelloAsso ERROR: Could not determine payment amount", DEBUG_DEVELOPER);
                 }
                 throw new \moodle_exception('invalidamount', 'paygw_helloasso');
             }
-            
+
             if ($currency !== 'EUR') {
                 if ($debug) {
                     debugging("HelloAsso ERROR: Currency must be EUR, got {$currency}", DEBUG_DEVELOPER);
@@ -180,7 +182,7 @@ class get_config_for_js extends external_api {
                 debugging("HelloAsso: Payment amount={$amount} {$currency}", DEBUG_DEVELOPER);
             }
 
-            // Créer la transaction de paiement
+            // Créer la transaction de paiement.
             $paymentid = \core_payment\helper::save_payment(
                 $account->get('id'),
                 $component,
@@ -196,7 +198,7 @@ class get_config_for_js extends external_api {
                 debugging("HelloAsso: Payment record created with ID={$paymentid}", DEBUG_DEVELOPER);
             }
 
-            // Préparer les informations du payeur depuis le profil Moodle
+            // Préparer les informations du payeur depuis le profil Moodle.
             $payerinfo = null;
             if (!empty($USER->firstname) && !empty($USER->lastname)) {
                 $payerinfo = [
@@ -204,8 +206,8 @@ class get_config_for_js extends external_api {
                     'firstName' => $USER->firstname,
                     'lastName' => $USER->lastname,
                 ];
-                
-                // Ajouter l'adresse si disponible
+
+                // Ajouter l'adresse si disponible.
                 if (!empty($USER->city)) {
                     $payerinfo['city'] = $USER->city;
                 }
@@ -214,7 +216,7 @@ class get_config_for_js extends external_api {
                 }
             }
 
-            // Description de l'achat
+            // Description de l'achat.
             $itemname = "Paiement Moodle - {$component}";
             if ($component === 'enrol_fee' && isset($instance)) {
                 $course = $DB->get_record('course', ['id' => $instance->courseid], 'fullname');
@@ -223,7 +225,7 @@ class get_config_for_js extends external_api {
                 }
             }
 
-            // UTILISER LA MÉTHODE CENTRALISÉE avec les nouveaux paramètres
+            // UTILISER LA MÉTHODE CENTRALISÉE avec les nouveaux paramètres.
             $payurl = gateway::generate_payment_url(
                 $config,
                 $paymentid,
@@ -237,7 +239,7 @@ class get_config_for_js extends external_api {
                 debugging("HelloAsso: Payment URL generated: {$payurl->out(false)}", DEBUG_DEVELOPER);
             }
 
-            // Logger l'initiation
+            // Logger l'initiation.
             logger::log_action(
                 $paymentid,
                 $USER->id,
@@ -252,14 +254,14 @@ class get_config_for_js extends external_api {
             return [
                 'redirecturl' => $payurl->out(false),
             ];
-            
+
         } catch (\Exception $e) {
             if ($debug) {
                 debugging("HelloAsso ERROR: {$e->getMessage()}", DEBUG_DEVELOPER);
                 debugging("HelloAsso ERROR Trace: {$e->getTraceAsString()}", DEBUG_DEVELOPER);
             }
-            
-            // Log l'erreur
+
+            // Log l'erreur.
             if (isset($paymentid)) {
                 logger::log_action(
                     $paymentid,
@@ -271,7 +273,7 @@ class get_config_for_js extends external_api {
                     500
                 );
             }
-            
+
             throw $e;
         }
     }
