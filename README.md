@@ -1,3 +1,581 @@
+# HelloAsso Payment Gateway Plugin for Moodle
+
+Payment gateway plugin to integrate HelloAsso into Moodle for managing paid course enrollments.
+
+---
+
+**[🇫🇷 Version française ci-dessous](#plugin-helloasso-pour-moodle)**
+
+---
+
+## Overview
+
+This plugin allows users to pay for course enrollment via HelloAsso, a French payment platform dedicated to associations. The plugin uses the **HelloAsso Checkout API v5** to create secure payment intents following best practices.
+
+**Official documentation:** [https://dev.helloasso.com/docs/intégrer-le-paiement-sur-votre-site](https://dev.helloasso.com/docs/intégrer-le-paiement-sur-votre-site)
+
+## Payment Flow
+
+1. ✅ **POST request** to `https://api.helloasso.com/v5/organizations/{org-slug}/checkout-intents`
+2. ✅ HelloAsso returns an `id` and a `redirectUrl` (valid for 15 minutes)
+3. ✅ User is redirected to this `redirectUrl`
+4. ✅ After payment, return to `returnUrl` with `checkoutIntentId`, `code=succeeded`, `orderId`
+5. ✅ **Mandatory API verification** to prevent fraud
+6. ✅ Validation and service delivery
+
+## Plugin Architecture
+
+### Basic Configuration Files
+
+#### **version.php**
+- Defines plugin metadata (version, Moodle compatibility, maturity)
+- Allows Moodle to manage updates
+- Must be incremented with each modification to force updates
+
+#### **lib.php**
+- Contains callback functions for Moodle
+- `paygw_helloasso_payment_gateways()`: registers the HelloAsso gateway in Moodle's payment system
+- Declares display name and component
+
+#### **settings.php**
+- Creates the global plugin configuration page in Moodle administration
+- Defines configuration fields:
+  - **clientid**: HelloAsso API Client ID
+  - **clientsecret**: HelloAsso API Client Secret
+  - **org_slug**: Organization identifier (slug)
+  - **base_url**: Base URL (`helloasso.com` or `helloasso-sandbox.com`)
+  - **debugmode**: Debug mode for detailed logging
+- Accessible via: Site Administration → Plugins → Payment Gateways → HelloAsso
+
+---
+
+### Database
+
+#### **db/install.xml**
+- Defines the structure of the `payment_helloasso_logs` table during installation
+- Contains fields to log all actions:
+  - Payment actions (initiation, success, failure)
+  - Errors and HTTP response codes
+  - Fraud detection (multiple attempts, suspicious IPs)
+  - HelloAsso reference and amounts
+
+#### **db/access.php**
+- Defines plugin permissions/capabilities
+- `paygw/helloasso:manage`: capability to manage the gateway (reserved for managers)
+- Inherits permissions from `moodle/site:config`
+
+#### **db/services.php**
+- Declares web services (AJAX API) usable by JavaScript
+- `paygw_helloasso_get_config_for_js`: web service that allows JavaScript to:
+  - Create a payment transaction
+  - Obtain the redirect URL to HelloAsso
+  - Pass necessary parameters (amount, reference, return URLs)
+
+---
+
+### Main Classes
+
+#### **classes/gateway.php**
+**Central class** of the plugin that extends `core_payment\gateway`
+
+**Main methods:**
+- `get_supported_currencies()`: returns `['EUR']` (only currency supported by HelloAsso)
+- `add_configuration_to_gateway_form($form)`: empty - configuration is global, not per account
+- `validate_gateway_form($form, $data, $files, &$errors)`: empty - no specific validation
+- `generate_payment_url($config, $paymentid, $amount, $useremail, $itemname, $payerinfo)`: **main method**
+  - Obtains an OAuth2 token
+  - Creates a checkout intent via POST to `/v5/organizations/{org-slug}/checkout-intents`
+  - Sends: totalAmount, initialAmount, itemName, return URLs, metadata, payer information
+  - Returns the HelloAsso redirect URL
+- `initiate_payment($payment, $options)`: delegates to `generate_payment_url()`
+- `get_helloasso_token()`: obtains OAuth2 token via `grant_type=client_credentials`
+  - Automatically constructs the API URL from `base_url`
+  - Token valid for approximately 30 minutes
+- `get_API_url()`: returns `https://api.{base_url}` (dynamic construction)
+- `can_refund()`: returns `false` (refunds not yet implemented)
+
+#### **classes/logger.php**
+Manages all plugin logs in the `payment_helloasso_logs` table
+
+**Main methods:**
+- `log_action($paymentid, $userid, $action, $status, $amount, $message, $response_code, $reference)`: records an action
+  - Actions: `payment_initiation`, `payment_return`, `token_request`, `checkout_intent_creation`, etc.
+  - Status: `success`, `error`, `fraud_detected`, `cancelled`
+- `get_payment_logs($paymentid)`: retrieves all logs for a specific payment
+- `get_error_logs($limit)`: retrieves recent errors (useful for monitoring)
+- `get_fraud_alerts($limit)`: retrieves fraud alerts (suspicious attempts)
+
+#### **classes/external/get_config_for_js.php**
+Web service called by JavaScript during payment initiation
+
+**Process:**
+1. Retrieves the payment account configured for HelloAsso
+2. Retrieves global configuration (org_slug, clientid, clientsecret, base_url)
+3. Calculates course cost
+4. **Creates a payment transaction** in Moodle's `payments` table
+5. Constructs payer information from Moodle profile:
+   - email, firstName, lastName
+   - city, country (if available)
+6. Constructs item name (itemName) according to context
+7. Calls `gateway::generate_payment_url()` to create checkout intent
+8. Records an initiation log
+9. Returns redirect URL to JavaScript
+
+---
+
+### JavaScript (AMD - Asynchronous Module Definition)
+
+#### **amd/src/gateways_modal.js** (source)
+Readable and maintainable ES6 JavaScript code
+
+**Main function:**
+- `process(component, paymentArea, itemId, description)`:
+  - Automatically called when user clicks "Pay with HelloAsso"
+  - Calls web service `paygw_helloasso_get_config_for_js` via Ajax
+  - Retrieves redirect URL
+  - Redirects user to HelloAsso with `window.location.href`
+
+#### **amd/build/gateways_modal.min.js** (compiled)
+- Minified and optimized JS version for production
+- Automatically loaded by Moodle when displaying payment modal
+- Generated via Grunt: `npm run build`
+
+#### **amd/build/gateways_modal.min.js.map**
+- Mapping file for debugging
+- Allows linking minified code to source code in browser development tools
+
+---
+
+### User Return Pages
+
+#### **return.php**
+Page for **return after successful payment** on HelloAsso
+
+**Process:**
+1. Retrieves GET parameters: `paymentid`, `sesskey`, `checkoutIntentId`, `code`, `orderId`
+2. **Verifies sesskey** (anti-CSRF protection)
+   - If invalid: fraud log + 403 error
+3. Loads payment record from database (`payments` table)
+4. Verifies that `code === 'succeeded'`
+5. **⚠️ IMPORTANT: Mandatory verification via API** (`verify_helloasso_payment()` function)
+   - Obtains an OAuth2 token
+   - Retrieves checkout intent: `GET /v5/organizations/{org-slug}/checkout-intents/{checkoutIntentId}`
+   - Verifies that:
+     - Checkout intent exists and contains an order.id
+     - OrderId matches
+     - Amount matches (order.amount.total)
+     - A payment with "Authorized" or "Processed" status exists
+     - Metadata matches (moodle_payment_id)
+6. **Unlocks access** to course via `\core_payment\helper::deliver_order()`
+   - Enrolls user in course
+   - Triggers associated Moodle events
+7. Records a success log
+8. Displays confirmation message with `$OUTPUT->notification()`
+
+**Enhanced security:**
+- ✅ **NEVER** trusts URL parameters alone
+- ✅ Complete verification via API before delivering service
+
+#### **cancel.php**
+Page displayed if user **cancels** payment on HelloAsso (`backUrl`)
+
+**Process:**
+1. Retrieves `paymentid` from URL parameters
+2. **Records a cancellation log** in `payment_helloasso_logs`
+3. Displays cancellation message with return button
+4. User can return to course and try again
+
+#### **error.php**
+Page displayed in case of **technical error** on HelloAsso (`errorUrl`)
+
+**Process:**
+1. Retrieves parameters: `paymentid`, `sesskey`, `checkoutIntentId`, `error`
+2. Verifies sesskey
+3. Loads payment from database
+4. **Records a technical error log**
+5. Displays error message
+6. If debug enabled: displays technical details (error code, checkoutIntentId)
+
+#### **webhook.php**
+Endpoint for **webhook notifications** from HelloAsso (optional, not yet implemented)
+
+---
+
+### Language Files
+
+#### **lang/en/paygw_helloasso.php**
+All text strings in **English**
+
+**Contains:**
+- Form labels (`clientid`, `clientsecret`, etc.)
+- Field descriptions (`clientid_desc`, `clientid_help`)
+- User messages (`payment_success`, `payment_cancelled`, `payment_error`)
+- Error messages (`missingconfig`, `invalidamount`, `paymentnotfound`)
+
+#### **lang/fr/paygw_helloasso.php**
+All text strings in **French**
+
+**Contains:**
+- Exact translation of the same keys as English version
+- Moodle automatically loads language according to user preferences
+
+---
+
+## Complete Payment Flow
+
+### Step 1: Initiation
+1. **User clicks "Enroll in course"** in Moodle
+2. Moodle displays payment gateway selection modal
+3. User selects "HelloAsso"
+4. Moodle automatically loads `amd/build/gateways_modal.min.js`
+
+### Step 2: Preparation (JavaScript)
+5. JavaScript calls web service `paygw_helloasso_get_config_for_js` via Ajax
+6. Parameters sent: `component`, `paymentarea`, `itemid`
+
+### Step 3: Transaction and checkout intent creation (PHP)
+7. Web service (`classes/external/get_config_for_js.php`):
+   - Verifies user is logged in
+   - Retrieves payment account and HelloAsso configuration
+   - Calculates amount
+   - **Creates an entry in `payments` table** with "pending" status
+   - Constructs payer information (email, name, first name, city, country)
+   - Calls `gateway::generate_payment_url()` which:
+     - Obtains an OAuth2 token
+     - **Creates a checkout intent** via POST to HelloAsso API
+     - Sends: totalAmount, initialAmount, itemName, returnUrl, backUrl, errorUrl, metadata, payer
+     - Receives: checkoutIntentId and redirectUrl
+   - Records initiation log with checkoutIntentId
+   - Returns redirect URL to JavaScript
+
+### Step 4: Redirect to HelloAsso
+8. JavaScript receives URL and redirects user: `window.location.href = url`
+9. User arrives at HelloAsso payment page (redirectUrl valid for 15 minutes)
+
+### Step 5: Payment on HelloAsso
+10. User enters credit card information
+11. HelloAsso processes payment
+12. HelloAsso validates or refuses payment
+
+### Step 6: Return to Moodle
+13. **If success**: HelloAsso redirects to `return.php?paymentid=X&sesskey=Y&checkoutIntentId=Z&code=succeeded&orderId=W`
+14. **If cancellation**: HelloAsso redirects to `cancel.php?paymentid=X`
+15. **If technical error**: HelloAsso redirects to `error.php?paymentid=X&sesskey=Y&error=code`
+
+### Step 7: Validation and unlocking (return.php)
+16. `return.php` verifies `sesskey` (security)
+17. Loads transaction from database
+18. Verifies that `code === 'succeeded'`
+19. **⚠️ MANDATORY: Verification via HelloAsso API** (`verify_helloasso_payment()`)
+    - Obtains a new OAuth2 token
+    - Calls `GET /v5/organizations/{org-slug}/checkout-intents/{checkoutIntentId}`
+    - Verifies complete payment integrity (amount, orderId, status, metadata)
+20. **Calls `\core_payment\helper::deliver_order($payment)`** which:
+    - Enrolls user in course
+    - Updates payment status to "success"
+    - Triggers `\core\event\payment_successful` event
+21. Records success log with checkoutIntentId
+22. Displays confirmation message
+
+---
+
+## Installation
+
+### Prerequisites
+- Moodle 4.2 or higher
+- PHP 7.4 or higher
+- HelloAsso account with API access
+
+### Installation Steps
+
+1. **Download the plugin**
+Create a zip of the folder using the command:
+   ```bash
+   npm run zip
+   ```
+The zip file is created in the parent directory.
+
+2. **Log in to Moodle as administrator**
+   - Go to **Site Administration → Plugins → Install plugins**
+   - Upload the zip file
+   - Follow instructions to complete installation
+
+3. **Configure HelloAsso**
+   - Go to [https://www.helloasso.com](https://www.helloasso.com)
+   - Log in to your association's back-office
+   - Go to **Settings → API**
+   - Create a new API client and note:
+     - **Client ID**
+     - **Client Secret**
+   - Note your **Organization Slug** (in back-office URL: `/organizations/{slug}/...`)
+
+4. **Configure the plugin in Moodle**
+   - Go to **Site Administration → Plugins → Payment Gateways → Manage payment gateways**
+   - Enable "HelloAsso"
+   - Click "Settings"
+   - Fill in:
+     - **Client ID**: your HelloAsso Client ID
+     - **Client Secret**: your HelloAsso Client Secret
+     - **Organization Slug**: your organization identifier
+     - **Base URL**:
+       - Production: `helloasso.com`
+       - Sandbox (testing): `helloasso-sandbox.com`
+
+5. **Create a payment account**
+   - Go to **Site Administration → Payments → Payment accounts**
+   - Click "Create payment account"
+   - Name: "HelloAsso Production" (or "HelloAsso Sandbox" for testing)
+   - Enabled gateways: check "HelloAsso"
+   - Save
+
+6. **Configure a course with paid enrollment**
+   - Edit a course
+   - Go to **Course Administration → Users → Enrollment methods**
+   - Add "Enrollment on payment"
+   - Configure:
+     - Payment account: "HelloAsso Production"
+     - Enrollment fee: amount in euros
+     - Currency: EUR
+   - Save
+
+7. **Test payment**
+   - Log out
+   - Log in with a student account (or create a test account)
+   - Go to the course
+   - Click "Enroll in course"
+   - Select "HelloAsso"
+   - Verify redirect to HelloAsso
+   - Complete a test payment
+
+---
+
+## Advanced Configuration
+
+### Sandbox mode (testing)
+
+To test without making real payments:
+
+1. **Create a HelloAsso sandbox account**
+   - Go to [https://www.helloasso-sandbox.com](https://www.helloasso-sandbox.com)
+   - Create a test organization
+   - Generate sandbox API keys
+
+2. **Configure plugin in sandbox mode**
+   - In Moodle: Administration → Plugins → HelloAsso → Settings
+   - Base URL: `helloasso-sandbox.com`
+   - Client ID and Secret: those from sandbox
+   - Debug mode: **enabled**
+
+3. **Test a payment**
+   - Use HelloAsso test cards
+   - Sandbox payments have no real cost
+
+### Logs and Monitoring
+
+- **View logs**: direct SQL query or create an admin page
+  ```sql
+  SELECT * FROM mdl_payment_helloasso_logs 
+  ORDER BY timecreated DESC 
+  LIMIT 100;
+  ```
+
+- **Monitor fraud**:
+  ```sql
+  SELECT * FROM mdl_payment_helloasso_logs 
+  WHERE status = 'fraud_detected' 
+  ORDER BY timecreated DESC;
+  ```
+
+- **Analyze errors**:
+  ```sql
+  SELECT * FROM mdl_payment_helloasso_logs 
+  WHERE status = 'error' 
+  ORDER BY timecreated DESC;
+  ```
+
+---
+
+## Development
+
+### Compile JavaScript after modifications
+
+If you modify sources in amd then you must recalculate the minified version by running:
+
+```bash
+npm run build
+```
+
+### Increment version
+
+After each modification:
+
+1. Edit `package.json` and `version.php`:
+```json
+// package.json
+"version": "0.5.0",
+"build": "2025123000"
+```
+
+2. Rebuild package:
+```bash
+npm run zip
+```
+
+3. Deploy and go to **Site Administration → Notifications** to apply the update.
+
+### Log Structure
+
+Each action records:
+- `paymentid`: Moodle transaction ID
+- `userid`: Concerned user ID
+- `action`: action type (`payment_initiation`, `payment_return`, `token_request`, etc.)
+- `status`: `success`, `error`, or `fraud_detected`
+- `amount`: amount in euros
+- `reference`: HelloAsso reference (CHECKOUT-{checkoutIntentId})
+- `message`: details or error message
+- `response_code`: API HTTP code (200, 403, 500, etc.)
+- `ip_address`: Client IP (for fraud detection)
+- `timecreated`: Unix timestamp
+
+---
+
+## Troubleshooting
+
+### Plugin doesn't appear in payment gateways
+- Verify folder is named `helloasso` in `payment/gateway/`
+- Purge all caches: **Site Administration → Development → Purge all caches**
+- Check folder permissions (must be readable by web server)
+
+### Error "TypeError: a.getConfigForJs is not a function"
+- JavaScript file is not up to date
+- Recompile with Grunt: `npm run build`
+- Purge browser cache (Ctrl+Shift+Delete)
+- Purge Moodle cache
+
+### White screen after selecting HelloAsso
+- Open browser JavaScript console (F12)
+- Check network errors
+- Verify web service `paygw_helloasso_get_config_for_js` is declared in **Site Administration → Server → Web services → Overview**
+- Check PHP and JavaScript logs
+
+### Payment doesn't validate after returning from HelloAsso
+- Verify `sesskey` in URL (must match session)
+- Verify `return.php` doesn't generate PHP errors
+- Check logs in `payment_helloasso_logs`
+- Enable debugging: **Site Administration → Development → Debugging**
+
+### Language strings appear as [[gatewayname]]
+- Language files not loaded
+- Verify files exist: `lang/en/paygw_helloasso.php` and `lang/fr/paygw_helloasso.php`
+- Purge language string cache: **Site Administration → Language → Language packs → Purge cache**
+
+### Error "Failed to obtain authentication token"
+- Verify Client ID and Client Secret are correct
+- Verify Base URL matches your environment
+- Check logs in `payment_helloasso_logs` (action: `token_request`)
+- Test token manually with:
+  ```bash
+  curl -X POST https://api.helloasso.com/oauth2/token \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -d "grant_type=client_credentials&client_id=YOUR_ID&client_secret=YOUR_SECRET"
+  ```
+
+### HTTP 403 error when creating checkout intent
+- Verify Organization Slug is correct
+- Verify your API client has "Checkout" privilege
+- Verify return URLs are publicly accessible
+- Check HelloAsso logs for more details
+
+### Payment is made but enrollment doesn't validate
+- Verify `verify_helloasso_payment()` function doesn't return `false`
+- Enable debug and check Moodle logs
+- Verify sent metadata matches (moodle_payment_id)
+- Verify sent amount matches received amount
+
+---
+
+## Security
+
+### Implemented Best Practices
+
+1. **Sesskey verification**: anti-CSRF protection on all return pages
+2. **⚠️ Mandatory API verification**: **NEVER** trusts URL parameters alone
+   - Checkout intent retrieval via API
+   - Verification of amount, orderId, status, metadata
+3. **Traceability metadata**: each payment contains `moodle_payment_id` and `moodle_user_id`
+4. **Complete logs**: traceability of all actions (checkout intent creation, verification, success, errors)
+5. **Amount validation**: verification that amount is positive and matches
+6. **Permission management**: only managers can configure gateway
+7. **No sensitive data storage**: no card numbers in database
+8. **Ephemeral OAuth2 token**: new token obtained for each payment (limited duration)
+
+### Points of Attention
+
+- **Client Secret**: never expose in JavaScript code or logs (used server-side only)
+- **HTTPS required**: all return URLs must be HTTPS
+- **Expired checkout intent**: redirect URL is valid for 15 minutes only
+- **Debugging in production**: disable debug mode in production to avoid leaking sensitive information
+
+---
+
+## Verification Checklist
+
+Before going to production, verify:
+
+- [ ] Client ID and Client Secret correct
+- [ ] Organization Slug correct
+- [ ] Base URL correct (`helloasso.com` for production)
+- [ ] Payment account created and HelloAsso gateway enabled
+- [ ] Course configured with "Enrollment on payment"
+- [ ] Enrollment fee configured
+- [ ] Test performed in sandbox mode
+- [ ] Log verification: no errors
+- [ ] Debug mode disabled in production
+- [ ] HTTPS enabled on Moodle site
+- [ ] Return URLs publicly accessible
+
+## Resources and Documentation
+
+- **Official HelloAsso Checkout Documentation**: [https://dev.helloasso.com/docs/intégrer-le-paiement-sur-votre-site](https://dev.helloasso.com/docs/intégrer-le-paiement-sur-votre-site)
+- **API Reference**: [https://dev.helloasso.com/reference](https://dev.helloasso.com/reference)
+- **Swagger API**: [https://api.helloasso.com/v5/swagger](https://api.helloasso.com/v5/swagger)
+- **Moodle Payment API Documentation**: [https://docs.moodle.org/dev/Payment_API](https://docs.moodle.org/dev/Payment_API)
+
+## Support
+
+For any questions or issues:
+1. Check logs in `mdl_payment_helloasso_logs`
+2. Enable Moodle debugging (DEVELOPER level)
+3. Enable plugin debug mode
+4. Check JavaScript console (F12)
+5. Consult HelloAsso documentation
+6. Open an issue on GitHub
+
+---
+
+## Roadmap
+
+Possible features for future versions:
+
+- [ ] Support for installment payments (terms)
+- [ ] Refund management via API (`can_refund()`)
+- [ ] Administration page to view logs
+- [ ] Support for custom payer fields
+- [ ] Payment statistics
+- [ ] Transaction export
+- [ ] Support for optional donations (containsDonation)
+
+## Author
+
+Sebastien Chassande-Barrioz
+
+## License
+
+GNU GPL v3 or later
+
+---
+---
+
 # Plugin HelloAsso pour Moodle
 
 Plugin de passerelle de paiement permettant d'intégrer HelloAsso dans Moodle pour gérer les inscriptions payantes aux cours.
