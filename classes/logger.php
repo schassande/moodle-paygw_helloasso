@@ -24,8 +24,6 @@
 
 namespace paygw_helloasso;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Logger class for HelloAsso payment gateway.
  *
@@ -44,10 +42,11 @@ class logger {
      * @param string $status Statut (success, error, fraud_detected)
      * @param float $amount Montant du paiement
      * @param string $message Message détaillé
-     * @param int $response_code Code HTTP de réponse
+     * @param int $responsecode Code HTTP de réponse
      * @param string $reference Référence HelloAsso
      */
-    public static function log_action($paymentid, $userid, $action, $status, $amount, $message = '', $response_code = null, $reference = '') {
+    public static function log_action($paymentid, $userid, $action, $status, $amount,
+        $message = '', $responsecode = null, $reference = '') {
         global $DB;
 
         $log = new \stdClass();
@@ -58,7 +57,7 @@ class logger {
         $log->amount = $amount;
         $log->reference = $reference;
         $log->message = $message;
-        $log->response_code = $response_code;
+        $log->response_code = $responsecode;
         $log->ip_address = getremoteaddr();
         $log->timecreated = time();
 
@@ -84,11 +83,11 @@ class logger {
      */
     public static function get_error_logs($limit = 100) {
         global $DB;
-        return $DB->get_records('paygw_helloasso_logs', 
-            ['status' => 'error'], 
-            'timecreated DESC', 
-            '*', 
-            0, 
+        return $DB->get_records('paygw_helloasso_logs',
+            ['status' => 'error'],
+            'timecreated DESC',
+            '*',
+            0,
             $limit
         );
     }
@@ -101,11 +100,11 @@ class logger {
      */
     public static function get_fraud_alerts($limit = 50) {
         global $DB;
-        return $DB->get_records('paygw_helloasso_logs', 
-            ['status' => 'fraud_detected'], 
-            'timecreated DESC', 
-            '*', 
-            0, 
+        return $DB->get_records('paygw_helloasso_logs',
+            ['status' => 'fraud_detected'],
+            'timecreated DESC',
+            '*',
+            0,
             $limit
         );
     }

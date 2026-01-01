@@ -27,10 +27,10 @@ require_login();
 
 global $USER, $DB;
 
-// Récupérer l'ID du paiement si disponible
+// Récupérer l'ID du paiement si disponible.
 $paymentid = optional_param('paymentid', 0, PARAM_INT);
 
-// Logger l'annulation
+// Logger l'annulation.
 if ($paymentid > 0) {
     $payment = $DB->get_record('payments', ['id' => $paymentid]);
     \paygw_helloasso\logger::log_action(

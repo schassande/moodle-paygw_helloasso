@@ -91,7 +91,7 @@ This plugin allows users to pay for course enrollment via HelloAsso, a French pa
 - `get_helloasso_token()`: obtains OAuth2 token via `grant_type=client_credentials`
   - Automatically constructs the API URL from `base_url`
   - Token valid for approximately 30 minutes
-- `get_API_url()`: returns `https://api.{base_url}` (dynamic construction)
+- `get_api_url()`: returns `https://api.{base_url}` (dynamic construction)
 - `can_refund()`: returns `false` (refunds not yet implemented)
 
 #### **classes/logger.php**
@@ -663,7 +663,7 @@ Ce plugin permet aux utilisateurs de payer leur inscription à un cours via Hell
 - `get_helloasso_token()` : obtient le token OAuth2 via `grant_type=client_credentials`
   - Construit automatiquement l'URL API depuis `base_url`
   - Token valide environ 30 minutes
-- `get_API_url()` : retourne `https://api.{base_url}` (construction dynamique)
+- `get_api_url()` : retourne `https://api.{base_url}` (construction dynamique)
 - `can_refund()` : retourne `false` (les remboursements ne sont pas encore implémentés)
 
 #### **classes/logger.php**

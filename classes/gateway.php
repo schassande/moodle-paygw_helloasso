@@ -24,14 +24,10 @@
 
 namespace paygw_helloasso;
 
-use core_payment\gateway as payment_gateway;
-use moodle_url;
-require_once($CFG->libdir . '/filelib.php');
-
 defined('MOODLE_INTERNAL') || die();
 
-global $CFG;
-require_once($CFG->libdir . '/filelib.php');
+use core_payment\gateway as payment_gateway;
+use moodle_url;
 
 /**
  * Gateway class for HelloAsso payment gateway.
@@ -68,8 +64,8 @@ class gateway extends payment_gateway {
      * @return void
      */
     public static function add_configuration_to_gateway_form(\core_payment\form\account_gateway $form): void {
-        // Aucune configuration spécifique au compte n'est nécessaire
-        // L'API Checkout utilise uniquement la configuration globale du plugin
+        // Aucune configuration spécifique au compte n'est nécessaire.
+        // L'API Checkout utilise uniquement la configuration globale du plugin.
     }
 
     /**
@@ -82,8 +78,9 @@ class gateway extends payment_gateway {
      * @param array $errors Array to add errors to
      * @return void
      */
-    public static function validate_gateway_form(\core_payment\form\account_gateway $form, \stdClass $data, array $files, array &$errors): void {
-        // Aucune validation nécessaire
+    public static function validate_gateway_form(\core_payment\form\account_gateway $form,
+        \stdClass $data, array $files, array &$errors): void {
+        // Aucune validation nécessaire.
     }
 
     /**
@@ -98,28 +95,30 @@ class gateway extends payment_gateway {
      * @param array|null $payerinfo Informations du payeur (firstName, lastName, etc)
      * @return moodle_url URL de redirection HelloAsso
      */
-    public static function generate_payment_url(array $config, int $paymentid, float $amount, string $useremail, string $itemname = 'Paiement Moodle', ?array $payerinfo = null): moodle_url {
+    public static function generate_payment_url(array $config, int $paymentid, float $amount,
+        string $useremail, string $itemname = 'Paiement Moodle', ?array $payerinfo = null): moodle_url {
         global $USER;
-        
+
         $debug = get_config('paygw_helloasso', 'debugmode');
-        
+
         $orgslug = $config['org_slug'] ?? '';
         $clientid = $config['clientid'] ?? '';
         $clientsecret = $config['clientsecret'] ?? '';
         $baseurl = $config['base_url'] ?? 'helloasso.com';
-        
-        // Construire les URLs à partir de base_url
+
+        // Construire les URLs à partir de base_url.
         // base_url peut être "helloasso.com" ou "helloasso-sandbox.com"
         $apiurl = 'https://api.' . $baseurl;
 
         if ($debug) {
-            debugging("HelloAsso: Config check - org_slug={$orgslug}, clientid=" . $clientid . "..., base_url={$baseurl}, api_url={$apiurl}", DEBUG_DEVELOPER);
+            debugging("HelloAsso: Config check - org_slug={$orgslug}, clientid=" . $clientid .
+                "..., base_url={$baseurl}, api_url={$apiurl}", DEBUG_DEVELOPER);
         }
 
         if (empty($orgslug) || empty($clientid) || empty($clientsecret)) {
             if ($debug) {
-                debugging("HelloAsso ERROR: Missing config - org_slug=" . (empty($orgslug) ? 'EMPTY' : 'OK') . 
-                         ", clientid=" . (empty($clientid) ? 'EMPTY' : 'OK') . 
+                debugging("HelloAsso ERROR: Missing config - org_slug=" . (empty($orgslug) ? 'EMPTY' : 'OK') .
+                         ", clientid=" . (empty($clientid) ? 'EMPTY' : 'OK') .
                          ", clientsecret=" . (empty($clientsecret) ? 'EMPTY' : 'OK'), DEBUG_DEVELOPER);
             }
             throw new \moodle_exception('missingconfig', 'paygw_helloasso');
@@ -129,17 +128,17 @@ class gateway extends payment_gateway {
             throw new \moodle_exception('invalidamount', 'paygw_helloasso');
         }
 
-        // Obtenir le token OAuth2
+        // Obtenir le token OAuth2.
         $token = self::get_helloasso_token();
         if (!$token) {
-            // Récupérer le dernier log d'erreur pour plus de détails
+            // Récupérer le dernier log d'erreur pour plus de détails.
             global $DB;
             $lastlog = $DB->get_record_sql(
-                "SELECT * FROM {paygw_helloasso_logs} 
-                 WHERE action = 'token_request' AND status = 'error' 
+                "SELECT * FROM {paygw_helloasso_logs}
+                 WHERE action = 'token_request' AND status = 'error'
                  ORDER BY timecreated DESC LIMIT 1"
             );
-            
+
             $errormsg = 'Failed to obtain authentication token';
             if ($lastlog && !empty($lastlog->message)) {
                 $errormsg .= ': ' . $lastlog->message;
@@ -147,32 +146,32 @@ class gateway extends payment_gateway {
                     $errormsg .= ' (HTTP ' . $lastlog->response_code . ')';
                 }
             }
-            
+
             if ($debug) {
                 debugging("HelloAsso TOKEN ERROR: {$errormsg}", DEBUG_DEVELOPER);
             }
-            
+
             throw new \moodle_exception('tokenfailed', 'paygw_helloasso', '', null, $errormsg);
         }
 
-        // Préparer les URLs de retour
+        // Préparer les URLs de retour.
         $returnurl = new moodle_url('/payment/gateway/helloasso/return.php', [
             'paymentid' => $paymentid,
             'sesskey' => sesskey()
         ]);
-        
+
         $backurl = new moodle_url('/payment/gateway/helloasso/cancel.php', [
             'paymentid' => $paymentid
         ]);
         debugging("HelloAsso: backurl={$backurl->out(false)}", DEBUG_DEVELOPER);
-        
+
         $errorurl = new moodle_url('/payment/gateway/helloasso/error.php', [
             'paymentid' => $paymentid,
             'sesskey' => sesskey()
         ]);
         debugging("HelloAsso: errorurl={$errorurl->out(false)}", DEBUG_DEVELOPER);
 
-        // Préparer les données du checkout intent
+        // Préparer les données du checkout intent.
         $amountcentimes = intval(round($amount * 100));
         $checkoutdata = [
             'totalAmount' => $amountcentimes,
@@ -188,36 +187,40 @@ class gateway extends payment_gateway {
             ]
         ];
 
-        // Ajouter les informations du payeur si disponibles
+        // Ajouter les informations du payeur si disponibles.
         if ($payerinfo) {
             $checkoutdata['payer'] = $payerinfo;
             $country = $checkoutdata['payer']['country'] ?? '';
             if (!empty($country) && strlen($country) == 2) {
-                // HelloAsso requiert un nom de pays sur 3 caractères, lorsqu'il est défini
-                // Mais Moodle n'a pas de fonction native pour convertir ISO2 -> ISO3
-                // On supprime simplement le champ si c'est ISO2 pour éviter l'erreur HelloAsso
+                // HelloAsso requiert un nom de pays sur 3 caractères, lorsqu'il est défini.
+                // Mais Moodle n'a pas de fonction native pour convertir ISO2 -> ISO3.
+                // On supprime simplement le champ si c'est ISO2 pour éviter l'erreur HelloAsso.
                 unset($checkoutdata['payer']['country']);
             }
         } else if (!empty($useremail)) {
             $checkoutdata['payer'] = ['email' => $useremail];
         }
-        $body = json_encode($checkoutdata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        $body = json_encode($checkoutdata,
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
-        // Appel POST à l'API checkout-intents
+        // Appel POST à l'API checkout-intents.
         $curl = new \curl();
         $curl->setHeader([
             'Authorization: Bearer ' . $token,
             'Content-Type: application/json'
         ]);
         $checkouturl = "{$apiurl}/v5/organizations/{$orgslug}/checkout-intents";
-        debugging("HelloAsso: Checkout intents HTTP call - url={$checkouturl}, token=" . $token . ", body=" . $body, DEBUG_DEVELOPER);
+        debugging("HelloAsso: Checkout intents HTTP call - url={$checkouturl}, token=" .
+            $token . ", body=" . $body, DEBUG_DEVELOPER);
         $result = $curl->post($checkouturl, $body);
 
         $httpcode = $curl->get_info()['http_code'] ?? 0;
 
         if (!$result) {
-            debugging("HelloAsso: Checkout intents - no HTTP result, httpcode={$httpcode}", DEBUG_DEVELOPER);
-            logger::log_action($paymentid, $USER->id, 'checkout_intent_creation', 'error', $amount, 'No response from API', $httpcode);
+            debugging("HelloAsso: Checkout intents - no HTTP result, httpcode={$httpcode}",
+                DEBUG_DEVELOPER);
+            logger::log_action($paymentid, $USER->id, 'checkout_intent_creation', 'error', $amount,
+                'No response from API', $httpcode);
             throw new \moodle_exception('checkoutfailed', 'paygw_helloasso');
         }
 
@@ -226,14 +229,16 @@ class gateway extends payment_gateway {
 
         if ($httpcode != 200 || !isset($response['redirectUrl'])) {
             $errormsg = $response['message'] ?? 'Unknown error';
-            logger::log_action($paymentid, $USER->id, 'checkout_intent_creation', 'error', $amount, "HTTP {$httpcode}: {$errormsg}", $httpcode);
+            logger::log_action($paymentid, $USER->id, 'checkout_intent_creation', 'error', $amount,
+                "HTTP {$httpcode}: {$errormsg}", $httpcode);
             throw new \moodle_exception('checkoutfailed', 'paygw_helloasso', '', null, $errormsg);
         }
 
-        // Enregistrer l'ID du checkout intent pour la réconciliation
+        // Enregistrer l'ID du checkout intent pour la réconciliation.
         $checkoutintentid = $response['id'] ?? null;
         if ($checkoutintentid) {
-            logger::log_action($paymentid, $USER->id, 'checkout_intent_creation', 'success', $amount, "Checkout intent created: {$checkoutintentid}", $httpcode, "CHECKOUT-{$checkoutintentid}");
+            logger::log_action($paymentid, $USER->id, 'checkout_intent_creation', 'success', $amount,
+                "Checkout intent created: {$checkoutintentid}", $httpcode, "CHECKOUT-{$checkoutintentid}");
         }
 
         return new moodle_url($response['redirectUrl']);
@@ -288,7 +293,7 @@ class gateway extends payment_gateway {
      *
      * @return string API base URL (production or sandbox)
      */
-    public static function get_API_url(): string {
+    public static function get_api_url(): string {
         $baseurl = get_config('paygw_helloasso', 'base_url') ?? 'helloasso.com';
         return 'https://api.' . $baseurl;
     }
@@ -299,14 +304,14 @@ class gateway extends payment_gateway {
      * @return string|null Token d'accès ou null en cas d'erreur
      */
     public static function get_helloasso_token() {
-        // l'URL API estconstruire depuis base_url
-        $url = self::get_API_url() . "/oauth2/token";
+        // L'URL API est construire depuis base_url.
+        $url = self::get_api_url() . "/oauth2/token";
 
-        // Récupérer les credentials depuis la configuration
+        // Récupérer les credentials depuis la configuration.
         $clientid = get_config('paygw_helloasso', 'clientid');
         $clientsecret = get_config('paygw_helloasso', 'clientsecret');
-        
-        // construction du body de la requête
+
+        // Construction du body de la requête.
         $data = "grant_type=client_credentials&client_id={$clientid}&client_secret={$clientsecret}";
 
         debugging("HelloAsso: Requesting token for client {$clientid} using URL {$url}", DEBUG_DEVELOPER);
@@ -321,7 +326,7 @@ class gateway extends payment_gateway {
             return null;
         }
 
-        $json = json_decode($result, true);        
+        $json = json_decode($result, true);
         if (isset($json['access_token'])) {
             $token = $json['access_token'];
             debugging("HelloAsso: Token obtained: {$token}", DEBUG_DEVELOPER);

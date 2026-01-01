@@ -29,12 +29,12 @@ global $USER, $OUTPUT;
 $paymentid = required_param('paymentid', PARAM_INT);
 $sesskey = required_param('sesskey', PARAM_RAW);
 
-// Paramètres retournés par HelloAsso en cas d'erreur
+// Paramètres retournés par HelloAsso en cas d'erreur.
 $checkoutintentid = optional_param('checkoutIntentId', '', PARAM_INT);
 $error = optional_param('error', 'unknown', PARAM_TEXT);
 
 try {
-    // Vérifier sesskey
+    // Vérifier sesskey.
     if (!confirm_sesskey($sesskey)) {
         \paygw_helloasso\logger::log_action(
             $paymentid,
@@ -47,7 +47,7 @@ try {
         throw new \moodle_exception('invalidsesskey');
     }
 
-    // Récupérer le paiement
+    // Récupérer le paiement.
     $payment = $DB->get_record('payments', ['id' => $paymentid], '*', MUST_EXIST);
     if (!$payment) {
         \paygw_helloasso\logger::log_action(
@@ -61,7 +61,7 @@ try {
         throw new \moodle_exception('paymentnotfound', 'paygw_helloasso');
     }
 
-    // Logger l'erreur technique
+    // Logger l'erreur technique.
     \paygw_helloasso\logger::log_action(
         $paymentid,
         $USER->id,
@@ -75,11 +75,11 @@ try {
 
     echo $OUTPUT->header();
     echo $OUTPUT->notification(get_string('payment_technical_error', 'paygw_helloasso'), 'notifyproblem');
-    
+
     if (get_config('paygw_helloasso', 'debugmode')) {
         echo html_writer::tag('p', "Debug info: Error code = {$error}, CheckoutIntentId = {$checkoutintentid}");
     }
-    
+
     echo $OUTPUT->continue_button(new moodle_url('/'));
     echo $OUTPUT->footer();
 
