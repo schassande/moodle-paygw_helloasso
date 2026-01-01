@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <XMLDB PATH="payment/gateway/helloasso/db" VERSION="20251230" COMMENT="XMLDB file for Moodle paygw/helloasso">
   <TABLES>
-    <TABLE NAME="payment_helloasso_logs" COMMENT="HelloAsso payment gateway logs">
+    <TABLE NAME="paygw_helloasso_logs" COMMENT="HelloAsso payment gateway logs">
       <FIELDS>
         <FIELD NAME="id"            TYPE="int"      LENGTH="10"     NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="paymentid"     TYPE="int"      LENGTH="10"     NOTNULL="true" COMMENT="Payment transaction ID"/>

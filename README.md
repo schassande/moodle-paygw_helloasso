@@ -52,7 +52,7 @@ This plugin allows users to pay for course enrollment via HelloAsso, a French pa
 ### Database
 
 #### **db/install.xml**
-- Defines the structure of the `payment_helloasso_logs` table during installation
+- Defines the structure of the `paygw_helloasso_logs` table during installation
 - Contains fields to log all actions:
   - Payment actions (initiation, success, failure)
   - Errors and HTTP response codes
@@ -95,7 +95,7 @@ This plugin allows users to pay for course enrollment via HelloAsso, a French pa
 - `can_refund()`: returns `false` (refunds not yet implemented)
 
 #### **classes/logger.php**
-Manages all plugin logs in the `payment_helloasso_logs` table
+Manages all plugin logs in the `paygw_helloasso_logs` table
 
 **Main methods:**
 - `log_action($paymentid, $userid, $action, $status, $amount, $message, $response_code, $reference)`: records an action
@@ -181,7 +181,7 @@ Page displayed if user **cancels** payment on HelloAsso (`backUrl`)
 
 **Process:**
 1. Retrieves `paymentid` from URL parameters
-2. **Records a cancellation log** in `payment_helloasso_logs`
+2. **Records a cancellation log** in `paygw_helloasso_logs`
 3. Displays cancellation message with return button
 4. User can return to course and try again
 
@@ -374,21 +374,21 @@ To test without making real payments:
 
 - **View logs**: direct SQL query or create an admin page
   ```sql
-  SELECT * FROM mdl_payment_helloasso_logs 
+  SELECT * FROM mdl_paygw_helloasso_logs 
   ORDER BY timecreated DESC 
   LIMIT 100;
   ```
 
 - **Monitor fraud**:
   ```sql
-  SELECT * FROM mdl_payment_helloasso_logs 
+  SELECT * FROM mdl_paygw_helloasso_logs 
   WHERE status = 'fraud_detected' 
   ORDER BY timecreated DESC;
   ```
 
 - **Analyze errors**:
   ```sql
-  SELECT * FROM mdl_payment_helloasso_logs 
+  SELECT * FROM mdl_paygw_helloasso_logs 
   WHERE status = 'error' 
   ORDER BY timecreated DESC;
   ```
@@ -461,7 +461,7 @@ Each action records:
 ### Payment doesn't validate after returning from HelloAsso
 - Verify `sesskey` in URL (must match session)
 - Verify `return.php` doesn't generate PHP errors
-- Check logs in `payment_helloasso_logs`
+- Check logs in `paygw_helloasso_logs`
 - Enable debugging: **Site Administration → Development → Debugging**
 
 ### Language strings appear as [[gatewayname]]
@@ -472,7 +472,7 @@ Each action records:
 ### Error "Failed to obtain authentication token"
 - Verify Client ID and Client Secret are correct
 - Verify Base URL matches your environment
-- Check logs in `payment_helloasso_logs` (action: `token_request`)
+- Check logs in `paygw_helloasso_logs` (action: `token_request`)
 - Test token manually with:
   ```bash
   curl -X POST https://api.helloasso.com/oauth2/token \
@@ -544,7 +544,7 @@ Before going to production, verify:
 ## Support
 
 For any questions or issues:
-1. Check logs in `mdl_payment_helloasso_logs`
+1. Check logs in `mdl_paygw_helloasso_logs`
 2. Enable Moodle debugging (DEVELOPER level)
 3. Enable plugin debug mode
 4. Check JavaScript console (F12)
@@ -624,7 +624,7 @@ Ce plugin permet aux utilisateurs de payer leur inscription à un cours via Hell
 ### Base de données
 
 #### **db/install.xml**
-- Définit la structure de la table `payment_helloasso_logs` lors de l'installation
+- Définit la structure de la table `paygw_helloasso_logs` lors de l'installation
 - Contient les champs pour logger toutes les actions :
   - Actions de paiement (initiation, succès, échec)
   - Erreurs et codes de réponse HTTP
@@ -667,7 +667,7 @@ Ce plugin permet aux utilisateurs de payer leur inscription à un cours via Hell
 - `can_refund()` : retourne `false` (les remboursements ne sont pas encore implémentés)
 
 #### **classes/logger.php**
-Gère tous les logs du plugin dans la table `payment_helloasso_logs`
+Gère tous les logs du plugin dans la table `paygw_helloasso_logs`
 
 **Méthodes principales :**
 - `log_action($paymentid, $userid, $action, $status, $amount, $message, $response_code, $reference)` : enregistre une action
@@ -753,7 +753,7 @@ Page affichée si l'utilisateur **annule** le paiement sur HelloAsso (`backUrl`)
 
 **Processus :**
 1. Récupère le `paymentid` depuis les paramètres d'URL
-2. **Enregistre un log d'annulation** dans `payment_helloasso_logs`
+2. **Enregistre un log d'annulation** dans `paygw_helloasso_logs`
 3. Affiche un message d'annulation avec bouton de retour
 4. L'utilisateur peut retourner au cours et réessayer
 
@@ -947,21 +947,21 @@ Pour tester sans effectuer de vrais paiements :
 
 - **Consulter les logs** : requête SQL directe ou créer une page d'admin
   ```sql
-  SELECT * FROM mdl_payment_helloasso_logs 
+  SELECT * FROM mdl_paygw_helloasso_logs 
   ORDER BY timecreated DESC 
   LIMIT 100;
   ```
 
 - **Surveiller les fraudes** :
   ```sql
-  SELECT * FROM mdl_payment_helloasso_logs 
+  SELECT * FROM mdl_paygw_helloasso_logs 
   WHERE status = 'fraud_detected' 
   ORDER BY timecreated DESC;
   ```
 
 - **Analyser les erreurs** :
   ```sql
-  SELECT * FROM mdl_payment_helloasso_logs 
+  SELECT * FROM mdl_paygw_helloasso_logs 
   WHERE status = 'error' 
   ORDER BY timecreated DESC;
   ```
@@ -1034,7 +1034,7 @@ Chaque action enregistre :
 ### Le paiement ne se valide pas après retour de HelloAsso
 - Vérifier le `sesskey` dans l'URL (doit correspondre à la session)
 - Vérifier que `return.php` ne génère pas d'erreur PHP
-- Consulter les logs dans `payment_helloasso_logs`
+- Consulter les logs dans `paygw_helloasso_logs`
 - Activer le débogage : **Administration du site → Développement → Débogage**
 
 ### Les chaînes de langue apparaissent comme [[gatewayname]]
@@ -1045,7 +1045,7 @@ Chaque action enregistre :
 ### Erreur "Failed to obtain authentication token"
 - Vérifier que le Client ID et Client Secret sont corrects
 - Vérifier que la Base URL correspond à votre environnement
-- Vérifier les logs dans `payment_helloasso_logs` (action: `token_request`)
+- Vérifier les logs dans `paygw_helloasso_logs` (action: `token_request`)
 - Tester manuellement le token avec :
   ```bash
   curl -X POST https://api.helloasso.com/oauth2/token \
@@ -1117,7 +1117,7 @@ Avant de mettre en production, vérifier :
 ## Support
 
 Pour toute question ou problème :
-1. Consulter les logs dans `mdl_payment_helloasso_logs`
+1. Consulter les logs dans `mdl_paygw_helloasso_logs`
 2. Activer le débogage Moodle (DEVELOPER level)
 3. Activer le debug mode du plugin
 4. Vérifier la console JavaScript (F12)

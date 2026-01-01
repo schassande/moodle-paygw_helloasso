@@ -48,7 +48,7 @@ class logger {
         $log->ip_address = getremoteaddr();
         $log->timecreated = time();
 
-        $DB->insert_record('payment_helloasso_logs', $log);
+        $DB->insert_record('paygw_helloasso_logs', $log);
     }
 
     /**
@@ -56,7 +56,7 @@ class logger {
      */
     public static function get_payment_logs($paymentid) {
         global $DB;
-        return $DB->get_records('payment_helloasso_logs', ['paymentid' => $paymentid], 'timecreated DESC');
+        return $DB->get_records('paygw_helloasso_logs', ['paymentid' => $paymentid], 'timecreated DESC');
     }
 
     /**
@@ -64,7 +64,7 @@ class logger {
      */
     public static function get_error_logs($limit = 100) {
         global $DB;
-        return $DB->get_records('payment_helloasso_logs', 
+        return $DB->get_records('paygw_helloasso_logs', 
             ['status' => 'error'], 
             'timecreated DESC', 
             '*', 
@@ -78,7 +78,7 @@ class logger {
      */
     public static function get_fraud_alerts($limit = 50) {
         global $DB;
-        return $DB->get_records('payment_helloasso_logs', 
+        return $DB->get_records('paygw_helloasso_logs', 
             ['status' => 'fraud_detected'], 
             'timecreated DESC', 
             '*', 

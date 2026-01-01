@@ -95,7 +95,7 @@ class gateway extends payment_gateway {
             // Récupérer le dernier log d'erreur pour plus de détails
             global $DB;
             $lastlog = $DB->get_record_sql(
-                "SELECT * FROM {payment_helloasso_logs} 
+                "SELECT * FROM {paygw_helloasso_logs} 
                  WHERE action = 'token_request' AND status = 'error' 
                  ORDER BY timecreated DESC LIMIT 1"
             );
