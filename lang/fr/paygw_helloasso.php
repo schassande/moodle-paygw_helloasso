@@ -31,3 +31,4 @@ $string['tokenfailed'] = 'Échec de l\'obtention du token d\'authentification He
 $string['checkoutfailed'] = 'Échec de la création de l\'intention de paiement';
 $string['debugmode'] = 'Mode débogage';
 $string['debugmode_desc'] = 'Activer les logs de débogage pour le dépannage. Les logs apparaîtront dans la sortie de débogage Moodle lorsque le débogage est activé.';
+$string['manage'] = 'Gérer la passerelle de paiement HelloAsso';

@@ -31,3 +31,4 @@ $string['tokenfailed'] = 'Failed to obtain HelloAsso authentication token';
 $string['checkoutfailed'] = 'Failed to create checkout intent';
 $string['debugmode'] = 'Debug mode';
 $string['debugmode_desc'] = 'Enable debug logging for troubleshooting. Logs will appear in Moodle debug output when debugging is enabled.';
+$string['manage'] = 'Manage HelloAsso payment gateway';
