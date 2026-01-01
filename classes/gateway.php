@@ -24,8 +24,6 @@
 
 namespace paygw_helloasso;
 
-defined('MOODLE_INTERNAL') || die();
-
 use core_payment\gateway as payment_gateway;
 use moodle_url;
 
@@ -107,7 +105,7 @@ class gateway extends payment_gateway {
         $baseurl = $config['base_url'] ?? 'helloasso.com';
 
         // Construire les URLs à partir de base_url.
-        // base_url peut être "helloasso.com" ou "helloasso-sandbox.com"
+        // base_url peut être "helloasso.com" ou "helloasso-sandbox.com".
         $apiurl = 'https://api.' . $baseurl;
 
         if ($debug) {
@@ -258,7 +256,7 @@ class gateway extends payment_gateway {
 
         try {
             $config = $this->get_configuration();
-            
+
             logger::log_action(
                 $payment->get_id(),
                 $USER->id,
