@@ -67,7 +67,7 @@ try {
 
     // IMPORTANT: Vérifier le paiement via l'API HelloAsso pour éviter la fraude
     // Ne JAMAIS faire confiance uniquement aux paramètres d'URL
-    $verified = verify_helloasso_payment($checkoutintentid, $orderid, $payment);
+    $verified = paygw_helloasso_verify_payment($checkoutintentid, $orderid, $payment);
 
     if ($verified) {
         debugging("HelloAsso: Payment verified successfully for paymentid {$paymentid}", DEBUG_DEVELOPER);
@@ -133,7 +133,7 @@ try {
  * @param object $payment Enregistrement du paiement Moodle
  * @return bool True si le paiement est vérifié et validé
  */
-function verify_helloasso_payment($checkoutintentid, $orderid, $payment) {
+function paygw_helloasso_verify_payment($checkoutintentid, $orderid, $payment) {
     global $DB;
     
     if (empty($checkoutintentid)) {
