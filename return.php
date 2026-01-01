@@ -224,6 +224,3 @@ function verify_helloasso_payment($checkoutintentid, $orderid, $payment) {
     debugging("HelloAsso: Payment verification passed for paymentid {$payment->id}", DEBUG_DEVELOPER);
     return true;
 }
-
-?>
-
