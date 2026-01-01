@@ -29,6 +29,11 @@ class get_config_for_js extends external_api {
             'itemid' => $itemid,
         ]);
 
+        // Context validation - require user to be logged in
+        $context = \context_system::instance();
+        self::validate_context($context);
+        require_login();
+
         $debug = get_config('paygw_helloasso', 'debugmode');
         
         if ($debug) {
